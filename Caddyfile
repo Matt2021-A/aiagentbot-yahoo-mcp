@@ -8,5 +8,5 @@
     resolvers 1.1.1.1
   }
 
-  reverse_proxy yahoo-mcp-app:{$PORT}
+  reverse_proxy yahoomcp-app-public:{$PORT}
 }
