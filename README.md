@@ -7,6 +7,7 @@ This repo now has the first real project scaffold for a Yahoo Mail MCP service t
 - uses the official MCP TypeScript SDK
 - uses Streamable HTTP
 - runs locally in Docker Desktop
+- separates local development from public HTTPS deployment
 - is designed for alternate-port public HTTPS
 - assumes ports 80 and 443 are unavailable to this project
 - keeps the existing website stack completely out of scope
@@ -23,20 +24,19 @@ What is already in the repo:
 - SMTP send module scaffold
 - mailbox search scaffold
 - MCP server scaffold with four tools
-- Dockerfile
-- Docker Compose file
+- app Dockerfile
+- local compose file
+- public compose file
 - Caddyfile scaffold
 - custom Caddy build scaffold with Cloudflare DNS plugin
 - env template and ignore files
 
 What still needs hands-on work:
 
-- install dependencies locally and confirm the app boots
 - verify the MCP SDK route behavior against Claude in practice
 - create the real `.env`
 - decide and confirm the final hostname
 - create the Cloudflare DNS token
-- test local Docker startup
 - test public alternate-port HTTPS
 - add the final connector in Claude and validate all four tools
 
@@ -106,6 +106,7 @@ The scaffold registers these four MCP tools:
 ├── .gitignore
 ├── Caddyfile
 ├── Dockerfile
+├── compose.public.yaml
 ├── compose.yaml
 ├── docker/
 │   └── caddy/
@@ -120,6 +121,36 @@ The scaffold registers these four MCP tools:
     └── smtp.js
 ```
 
+## Compose file split
+
+This repo now has two run modes on purpose.
+
+### `compose.yaml`
+Local development only.
+
+Use this when you want:
+- the app container only
+- no Caddy
+- no Cloudflare token
+- no DNS-01 certificate flow
+- a simple local health check on `http://localhost:3000/health`
+
+Container name in this mode:
+- `yahoomcp-app-local`
+
+### `compose.public.yaml`
+Public-stack mode.
+
+Use this when you want:
+- the app container
+- the Caddy HTTPS front end
+- Cloudflare DNS challenge
+- alternate-port public HTTPS
+
+Container names in this mode:
+- `yahoomcp-app-public`
+- `yahoomcp-edge-public`
+
 ## Environment variables
 
 Create a local `.env` file based on `.env.example`.
@@ -133,7 +164,7 @@ PORT=3000
 HOSTNAME=yahoomcp.example.com
 PUBLIC_HTTPS_PORT=8443
 ACME_EMAIL=you@example.com
-CF_API_TOKEN=replace_with_real_cloudflare_token
+CF_API_TOKEN=replace_me_only_for_public_stack
 ```
 
 Important:
@@ -141,6 +172,7 @@ Important:
 - do not commit `.env`
 - do not paste secrets into GitHub issues, PRs, or Asana comments
 - the Cloudflare token should be narrowly scoped to DNS changes for the relevant zone
+- `CF_API_TOKEN` is only required for the public stack
 
 ## Why Cloudflare is the current default
 
@@ -152,19 +184,21 @@ If you use a different DNS provider later, you will need to swap:
 - the token variable name
 - the DNS challenge line in `Caddyfile`
 
-## First-run local steps
+## Local development steps
 
-### 1. Clone the repo and switch to your working branch
+### 1. Clone the repo
 
 ```bash
 git clone https://github.com/Matt2021-A/aiagentbot-yahoo-mcp.git
 cd aiagentbot-yahoo-mcp
-git checkout dev/docker-streamable-http-scaffold-20260423
+git checkout main
 ```
 
 ### 2. Create `.env`
 
 Copy `.env.example` to `.env` and replace placeholders with real values.
+
+For local boot only, the Cloudflare token can stay as a placeholder because the local stack does not use Caddy.
 
 ### 3. Install Node dependencies locally
 
@@ -172,11 +206,19 @@ Copy `.env.example` to `.env` and replace placeholders with real values.
 npm install
 ```
 
-### 4. Start Docker Desktop
+### 4. Start the app directly if you want the fastest boot test
 
-Make sure Docker Desktop is running before using Compose.
+```bash
+npm start
+```
 
-### 5. Build and start the local stack
+Then test:
+
+```text
+http://localhost:3000/health
+```
+
+### 5. Start the local Docker stack
 
 ```bash
 docker compose up --build
@@ -184,20 +226,15 @@ docker compose up --build
 
 ### 6. Check logs
 
-You want both containers to stay up:
+You want the local app container to stay up:
 
-- `yahoo-mcp-app`
-- `yahoo-mcp-caddy`
+- `yahoomcp-app-local`
 
 ### 7. Test local health endpoint
-
-Because the scaffold currently maps app port 3000 locally, test:
 
 ```text
 http://localhost:3000/health
 ```
-
-You can also test through the HTTPS front end once DNS and certificate setup are complete.
 
 ## Public alternate-port deployment steps
 
@@ -226,10 +263,10 @@ Store it securely and put the actual value only in `.env`.
 
 Forward the chosen public port, likely `8443`, to the Docker host machine.
 
-### 5. Start the stack in detached mode
+### 5. Start the public stack
 
 ```bash
-docker compose up -d --build
+docker compose -f compose.public.yaml up -d --build
 ```
 
 ### 6. Watch for certificate issuance
@@ -270,15 +307,15 @@ A few honest truths:
 - the search implementation is intentionally simple right now
 - the IMAP UID handling may need refinement once live Yahoo testing starts
 - the Streamable HTTP route is scaffolded from the stateless pattern, which is good for getting moving but still needs real client validation
-- the Caddy path is opinionated toward Cloudflare because it is the cleanest zero-budget DNS automation lane for this project
+- the public HTTPS path is opinionated toward Cloudflare because it is the cleanest zero-budget DNS automation lane for this project
+- the local and public Compose paths are intentionally separate so local app testing does not depend on public-DNS secrets
 
 ## What I would do next
 
-1. create the real `.env`
-2. run `npm install`
-3. run `docker compose up --build`
-4. confirm `http://localhost:3000/health`
-5. if local app boot works, move to DNS and alternate-port public testing
-6. only after public HTTPS is good, add the Claude connector
+1. run `docker compose up --build`
+2. confirm `http://localhost:3000/health`
+3. only after the local Docker path is boring, move to `compose.public.yaml`
+4. add the real Cloudflare token only when you are ready for public HTTPS
+5. only after public HTTPS is good, add the Claude connector
 
 That is the shape of the work now. The repo has stopped being an empty shell and started becoming an actual service.
