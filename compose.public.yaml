@@ -1,0 +1,30 @@
+services:
+  yahoomcp-app-public:
+    build:
+      context: .
+    container_name: yahoomcp-app-public
+    env_file:
+      - .env
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  yahoomcp-edge-public:
+    build:
+      context: ./docker/caddy
+    container_name: yahoomcp-edge-public
+    env_file:
+      - .env
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - yahoomcp-app-public
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
