@@ -1,0 +1,6 @@
+GitHub operator write-path test
+
+Created by ChatGPTBot-MattR to verify branch creation, file creation, PR creation, and merge flow in Matt2021-A/aiagentbot-yahoo-mcp.
+
+Date: 2026-04-22
+Purpose: safe connector validation for the Yahoo Mail MCP build workflow.
