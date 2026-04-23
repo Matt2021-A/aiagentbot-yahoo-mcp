@@ -4,7 +4,3 @@ Created by ChatGPTBot-MattR to verify branch creation, file creation, PR creatio
 
 Date: 2026-04-22
 Purpose: safe connector validation for the Yahoo Mail MCP build workflow.
-
-
-
-this line is a Manual edit with Claude ID via GitHub GUI editor to validate that the ID has permissions.
