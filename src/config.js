@@ -9,8 +9,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   HOSTNAME: z.string().min(1),
   PUBLIC_HTTPS_PORT: z.coerce.number().default(8443),
-  ACME_EMAIL: z.string().email().optional(),
-  DNS_PROVIDER_TOKEN: z.string().optional()
+  ACME_EMAIL: z.string().email().optional()
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -26,6 +25,5 @@ export const config = {
   port: parsed.data.PORT,
   hostname: parsed.data.HOSTNAME,
   publicHttpsPort: parsed.data.PUBLIC_HTTPS_PORT,
-  acmeEmail: parsed.data.ACME_EMAIL,
-  dnsProviderToken: parsed.data.DNS_PROVIDER_TOKEN
+  acmeEmail: parsed.data.ACME_EMAIL
 };
