@@ -1,0 +1,22 @@
+{
+  "name": "aiagentbot-yahoo-mcp",
+  "version": "0.1.0",
+  "description": "Provider-neutral Yahoo Mail MCP service scaffold for Claude-first remote connector use.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "dotenv": "^16.0.0",
+    "express": "^5.1.0",
+    "imapflow": "^1.0.195",
+    "nodemailer": "^7.0.6",
+    "zod": "^4.1.5"
+  }
+}
