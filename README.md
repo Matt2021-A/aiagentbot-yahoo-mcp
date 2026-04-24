@@ -30,6 +30,7 @@ What is already in the repo:
 - public compose file
 - env template and ignore files
 - published Docker image
+- committed package lock for reproducible installs
 
 What still needs hands-on work:
 
@@ -37,7 +38,6 @@ What still needs hands-on work:
 - wait for Yahoo app-password eligibility on the target account
 - validate live Yahoo IMAP and SMTP behavior
 - finalize the public HTTPS certificate path for the current DNS environment
-- add and commit a package lock so the Docker build can move from `npm install` to `npm ci`
 - add the final connector in Claude and validate all four tools
 
 ## Architecture
@@ -130,6 +130,7 @@ Use this image when you want to run the current published app container without 
 │       └── Dockerfile
 ├── index.js
 ├── package.json
+├── package-lock.json
 └── src/
     ├── config.js
     ├── imap.js
@@ -174,12 +175,11 @@ The current public compose path still reflects earlier Cloudflare-oriented work 
 
 The app Dockerfile now uses:
 - a multi-stage build
+- `npm ci` for reproducible dependency installs
 - production-only dependency install
 - a non-root runtime user
 
-This trims the runtime image and removes some unnecessary build-time baggage from the final container.
-
-The next Docker follow-up is to commit a package lock and switch the build fully to `npm ci`.
+This trims the runtime image and makes the published build more predictable.
 
 ## Environment variables
 
@@ -334,15 +334,13 @@ A few honest truths:
 - the Streamable HTTP route is scaffolded from the stateless pattern, which is good for getting moving but still needs real client validation
 - the local and public Compose paths are intentionally separate so local app testing does not depend on public-edge decisions
 - the public documentation now reflects WordPress.com DNS as the current hostname path, but the public certificate implementation still needs one more cleanup pass
-- the Docker image is leaner than the original starter image, but there is still room to improve once a package lock is committed
+- the Docker image is leaner than the original starter image, but there is still room to improve as the service matures
 
 ## What I would do next
 
 1. keep using mock mode while Yahoo app-password creation is unavailable
 2. validate the four tools in mock mode end to end
 3. clean up the public HTTPS implementation so it matches the WordPress.com DNS reality
-4. create and commit a package lock from a normal local environment
-5. switch the Docker build to `npm ci`
-6. resume live Yahoo validation once app-password creation is available
+4. resume live Yahoo validation once app-password creation is available
 
 That is the shape of the work now. The repo has stopped being an empty shell and started becoming an actual service.
