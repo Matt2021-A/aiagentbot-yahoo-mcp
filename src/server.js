@@ -4,9 +4,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import * as z from 'zod/v4';
 
 import { config } from './config.js';
-import { getMessage, readInbox } from './imap.js';
-import { searchEmail } from './search.js';
-import { sendEmail } from './smtp.js';
+import { createMailProvider } from './providers/index.js';
+
+const mailProvider = createMailProvider();
 
 function buildToolResponse(data) {
   return {
@@ -42,15 +42,15 @@ function createServer() {
     'read_inbox',
     {
       title: 'Read Inbox',
-      description: 'Read a recent slice of the Yahoo inbox.',
+      description: 'Read a recent slice of the configured inbox provider.',
       inputSchema: {
         limit: z.number().int().min(1).max(50).default(10)
       }
     },
     async ({ limit }) => {
       try {
-        const messages = await readInbox(limit);
-        return buildToolResponse({ messages, count: messages.length });
+        const messages = await mailProvider.readInbox(limit);
+        return buildToolResponse({ provider: mailProvider.name, messages, count: messages.length });
       } catch (error) {
         return buildErrorResponse(error);
       }
@@ -61,15 +61,15 @@ function createServer() {
     'get_message',
     {
       title: 'Get Message',
-      description: 'Retrieve a single Yahoo message by IMAP UID.',
+      description: 'Retrieve a single message by provider-specific id.',
       inputSchema: {
         id: z.string().min(1)
       }
     },
     async ({ id }) => {
       try {
-        const message = await getMessage(id);
-        return buildToolResponse(message);
+        const message = await mailProvider.getMessage(id);
+        return buildToolResponse({ provider: mailProvider.name, message });
       } catch (error) {
         return buildErrorResponse(error);
       }
@@ -80,7 +80,7 @@ function createServer() {
     'search_email',
     {
       title: 'Search Email',
-      description: 'Search the recent Yahoo inbox by from, subject, or since date.',
+      description: 'Search the configured inbox provider by from, subject, or since date.',
       inputSchema: {
         from: z.string().optional(),
         subject: z.string().optional(),
@@ -89,8 +89,8 @@ function createServer() {
     },
     async ({ from, subject, since }) => {
       try {
-        const matches = await searchEmail({ from, subject, since });
-        return buildToolResponse({ matches, count: matches.length });
+        const matches = await mailProvider.searchEmail({ from, subject, since });
+        return buildToolResponse({ provider: mailProvider.name, matches, count: matches.length });
       } catch (error) {
         return buildErrorResponse(error);
       }
@@ -101,7 +101,7 @@ function createServer() {
     'send_email',
     {
       title: 'Send Email',
-      description: 'Send an email from the Yahoo bot identity.',
+      description: 'Send an email from the configured mail provider.',
       inputSchema: {
         to: z.string().min(1),
         subject: z.string().min(1),
@@ -110,8 +110,8 @@ function createServer() {
     },
     async ({ to, subject, body }) => {
       try {
-        const result = await sendEmail(to, subject, body);
-        return buildToolResponse(result);
+        const result = await mailProvider.sendEmail(to, subject, body);
+        return buildToolResponse({ provider: mailProvider.name, result });
       } catch (error) {
         return buildErrorResponse(error);
       }
@@ -131,6 +131,8 @@ app.get('/health', (_req, res) => {
     transport: 'streamable-http',
     hostname: config.hostname,
     publicHttpsPort: config.publicHttpsPort,
+    mailMode: config.mailMode,
+    provider: mailProvider.name,
     yahooEmail: config.yahooEmail
   });
 });
@@ -178,4 +180,4 @@ app.delete('/mcp', (_req, res) => {
   });
 });
 
-export { config };
+export { config, mailProvider };

@@ -4,8 +4,9 @@ import * as z from 'zod/v4';
 dotenv.config();
 
 const envSchema = z.object({
-  YAHOO_EMAIL: z.string().email(),
-  YAHOO_APP_PASSWORD: z.string().min(1),
+  MAIL_MODE: z.enum(['mock', 'yahoo']).default('mock'),
+  YAHOO_EMAIL: z.string().email().optional(),
+  YAHOO_APP_PASSWORD: z.string().min(1).optional(),
   PORT: z.coerce.number().default(3000),
   HOSTNAME: z.string().min(1),
   PUBLIC_HTTPS_PORT: z.coerce.number().default(8443),
@@ -19,9 +20,26 @@ if (!parsed.success) {
   throw new Error(`[config] Invalid environment configuration: ${details}`);
 }
 
+if (parsed.data.MAIL_MODE === 'yahoo') {
+  const missing = [];
+
+  if (!parsed.data.YAHOO_EMAIL) {
+    missing.push('YAHOO_EMAIL');
+  }
+
+  if (!parsed.data.YAHOO_APP_PASSWORD) {
+    missing.push('YAHOO_APP_PASSWORD');
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`[config] MAIL_MODE=yahoo requires: ${missing.join(', ')}`);
+  }
+}
+
 export const config = {
-  yahooEmail: parsed.data.YAHOO_EMAIL,
-  yahooAppPassword: parsed.data.YAHOO_APP_PASSWORD,
+  mailMode: parsed.data.MAIL_MODE,
+  yahooEmail: parsed.data.YAHOO_EMAIL ?? 'aiagentbot.matt2021@yahoo.com',
+  yahooAppPassword: parsed.data.YAHOO_APP_PASSWORD ?? '',
   port: parsed.data.PORT,
   hostname: parsed.data.HOSTNAME,
   publicHttpsPort: parsed.data.PUBLIC_HTTPS_PORT,
