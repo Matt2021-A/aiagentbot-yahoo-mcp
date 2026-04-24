@@ -121,7 +121,12 @@ function createServer() {
   return server;
 }
 
-export const app = createMcpExpressApp();
+const allowedHosts = [config.hostname, 'localhost', '127.0.0.1', '::1'];
+
+export const app = createMcpExpressApp({
+  host: '0.0.0.0',
+  allowedHosts
+});
 
 app.get('/health', (_req, res) => {
   res.json({
