@@ -39,6 +39,7 @@ What still needs hands-on work:
 - create the Cloudflare DNS token
 - test public alternate-port HTTPS
 - add the final connector in Claude and validate all four tools
+- add and commit a package lock so the Docker build can move from `npm install` to `npm ci`
 
 ## Architecture
 
@@ -150,6 +151,17 @@ Use this when you want:
 Container names in this mode:
 - `yahoomcp-app-public`
 - `yahoomcp-edge-public`
+
+## Docker build posture
+
+The app Dockerfile now uses:
+- a multi-stage build
+- production-only dependency install
+- a non-root runtime user
+
+This trims the runtime image and removes some unnecessary build-time baggage from the final container.
+
+The next Docker follow-up is to commit a package lock and switch the build fully to `npm ci`.
 
 ## Environment variables
 
@@ -309,13 +321,14 @@ A few honest truths:
 - the Streamable HTTP route is scaffolded from the stateless pattern, which is good for getting moving but still needs real client validation
 - the public HTTPS path is opinionated toward Cloudflare because it is the cleanest zero-budget DNS automation lane for this project
 - the local and public Compose paths are intentionally separate so local app testing does not depend on public-DNS secrets
+- the Docker image is less bloated than the original starter image, but there is still room to improve once a package lock is committed
 
 ## What I would do next
 
-1. run `docker compose up --build`
-2. confirm `http://localhost:3000/health`
-3. only after the local Docker path is boring, move to `compose.public.yaml`
-4. add the real Cloudflare token only when you are ready for public HTTPS
-5. only after public HTTPS is good, add the Claude connector
+1. rebuild the Docker image from this branch and compare the scan to the previous image
+2. if the scan improves and the container still boots, merge the Dockerfile changes
+3. then create and commit a package lock from a normal local environment
+4. switch the build to `npm ci`
+5. continue tightening the published image from there
 
 That is the shape of the work now. The repo has stopped being an empty shell and started becoming an actual service.
