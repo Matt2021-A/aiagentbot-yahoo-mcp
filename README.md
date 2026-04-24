@@ -14,7 +14,7 @@ This repo now has the first real project scaffold for a Yahoo Mail MCP service t
 
 ## Current status
 
-This is a starter scaffold, not a finished production service yet.
+This is a working local scaffold, not a finished production service yet.
 
 What is already in the repo:
 
@@ -24,22 +24,21 @@ What is already in the repo:
 - SMTP send module scaffold
 - mailbox search scaffold
 - MCP server scaffold with four tools
+- mock mail mode and provider abstraction
 - app Dockerfile
 - local compose file
 - public compose file
-- Caddyfile scaffold
-- custom Caddy build scaffold with Cloudflare DNS plugin
 - env template and ignore files
+- published Docker image
 
 What still needs hands-on work:
 
 - verify the MCP SDK route behavior against Claude in practice
-- create the real `.env`
-- decide and confirm the final hostname
-- create the Cloudflare DNS token
-- test public alternate-port HTTPS
-- add the final connector in Claude and validate all four tools
+- wait for Yahoo app-password eligibility on the target account
+- validate live Yahoo IMAP and SMTP behavior
+- finalize the public HTTPS certificate path for the current DNS environment
 - add and commit a package lock so the Docker build can move from `npm install` to `npm ci`
+- add the final connector in Claude and validate all four tools
 
 ## Architecture
 
@@ -47,10 +46,11 @@ What still needs hands-on work:
 Claude
   |
   | HTTPS to public hostname on alternate port
-  | Example: https://yahoomcp.example.com:8443
+  | Target hostname: yahoomcp.techthatmattrs.net:8443
   v
-Public DNS record
+WordPress.com DNS
   |
+  | A record for yahoomcp.techthatmattrs.net
   | points to home public IP
   v
 Home router
@@ -63,10 +63,10 @@ Windows PC running Docker Desktop
   | Docker host                                    |
   |                                                |
   |  +------------------------------------------+  |
-  |  | Caddy HTTPS front end                    |  |
+  |  | Public HTTPS front end                   |  |
   |  |                                          |  |
   |  | - listens on alternate HTTPS port        |  |
-  |  | - gets certificate with DNS-01           |  |
+  |  | - certificate path still being finalized |  |
   |  | - reverse proxies to app container       |  |
   |  +-------------------+----------------------+  |
   |                      |                         |
@@ -98,6 +98,22 @@ The scaffold registers these four MCP tools:
 3. `search_email`
 4. `get_message`
 
+These four tools give the service a clear operational mail surface for reading, looking up, searching, and sending mail.
+
+## Published image
+
+Published image:
+
+- `iwashuman2021/mcp:yahoo-mcp-latest`
+
+Pull it with:
+
+```bash
+docker pull iwashuman2021/mcp:yahoo-mcp-latest
+```
+
+Use this image when you want to run the current published app container without building from source locally.
+
 ## Repo layout
 
 ```text
@@ -119,7 +135,8 @@ The scaffold registers these four MCP tools:
     ├── imap.js
     ├── search.js
     ├── server.js
-    └── smtp.js
+    ├── smtp.js
+    └── providers/
 ```
 
 ## Compose file split
@@ -131,9 +148,8 @@ Local development only.
 
 Use this when you want:
 - the app container only
-- no Caddy
-- no Cloudflare token
-- no DNS-01 certificate flow
+- no public edge service
+- no certificate dependency
 - a simple local health check on `http://localhost:3000/health`
 
 Container name in this mode:
@@ -144,13 +160,15 @@ Public-stack mode.
 
 Use this when you want:
 - the app container
-- the Caddy HTTPS front end
-- Cloudflare DNS challenge
-- alternate-port public HTTPS
+- the public HTTPS front end
+- alternate-port public exposure
 
 Container names in this mode:
 - `yahoomcp-app-public`
 - `yahoomcp-edge-public`
+
+Important:
+The current public compose path still reflects earlier Cloudflare-oriented work and needs one more documentation and implementation pass to fully match the WordPress.com DNS architecture.
 
 ## Docker build posture
 
@@ -170,31 +188,36 @@ Create a local `.env` file based on `.env.example`.
 Expected values:
 
 ```env
+MAIL_MODE=mock
 YAHOO_EMAIL=aiagentbot.matt2021@yahoo.com
-YAHOO_APP_PASSWORD=replace_with_real_app_password
+YAHOO_APP_PASSWORD=replace_with_real_app_password_when_available
 PORT=3000
-HOSTNAME=yahoomcp.example.com
+HOSTNAME=yahoomcp.techthatmattrs.net
 PUBLIC_HTTPS_PORT=8443
 ACME_EMAIL=you@example.com
-CF_API_TOKEN=replace_me_only_for_public_stack
+CF_API_TOKEN=legacy_placeholder_only_for_old_public_path
 ```
 
 Important:
 
 - do not commit `.env`
 - do not paste secrets into GitHub issues, PRs, or Asana comments
-- the Cloudflare token should be narrowly scoped to DNS changes for the relevant zone
-- `CF_API_TOKEN` is only required for the public stack
+- `MAIL_MODE=mock` is the current default development path
+- `MAIL_MODE=yahoo` should only be used once Yahoo app-password creation is available for the target account
+- `CF_API_TOKEN` is no longer the intended long-term DNS direction for this project
 
-## Why Cloudflare is the current default
+## DNS reality for this project
 
-This scaffold assumes DNS-01 certificate validation because ports 80 and 443 are unavailable to this project. The included Caddy build uses the Cloudflare DNS plugin as the default no-budget automation path.
+The public hostname currently lives under:
 
-If you use a different DNS provider later, you will need to swap:
+- `yahoomcp.techthatmattrs.net`
 
-- the custom Caddy plugin build
-- the token variable name
-- the DNS challenge line in `Caddyfile`
+DNS is being managed through the existing `techthatmattrs.net` environment rather than a migrated Cloudflare-managed zone.
+
+That means:
+- the A record for `yahoomcp.techthatmattrs.net` points to the home public IP
+- WordPress.com DNS is part of the real deployment story
+- the public certificate path needs to be aligned with that reality before the final external connector path is considered complete
 
 ## Local development steps
 
@@ -210,7 +233,7 @@ git checkout main
 
 Copy `.env.example` to `.env` and replace placeholders with real values.
 
-For local boot only, the Cloudflare token can stay as a placeholder because the local stack does not use Caddy.
+For local boot, leave `MAIL_MODE=mock`.
 
 ### 3. Install Node dependencies locally
 
@@ -248,60 +271,50 @@ You want the local app container to stay up:
 http://localhost:3000/health
 ```
 
-## Public alternate-port deployment steps
+## Deploy from the published image
 
-### 1. Pick the final hostname
+### Run the app container directly
 
-Example:
-
-```text
-yahoomcp.example.com
-```
-
-### 2. Point DNS to the home public IP
-
-Create the DNS record for the hostname in Cloudflare.
-
-### 3. Create the Cloudflare API token
-
-Recommended minimum permissions for the zone used by this service:
-
-- Zone.Zone:Read
-- Zone.DNS:Edit
-
-Store it securely and put the actual value only in `.env`.
-
-### 4. Confirm router forwarding
-
-Forward the chosen public port, likely `8443`, to the Docker host machine.
-
-### 5. Start the public stack
+Create a local `.env` file first, then run:
 
 ```bash
-docker compose -f compose.public.yaml up -d --build
+docker run --rm --env-file .env -p 3000:3000 iwashuman2021/mcp:yahoo-mcp-latest
 ```
 
-### 6. Watch for certificate issuance
+Then test:
 
-Caddy should use DNS-01 to obtain the certificate.
+```bash
+curl http://localhost:3000/health
+```
 
-### 7. Test from outside the house
+### Notes
 
-Use mobile data or another external network and test:
+- this is the quickest way to run the published app container without building locally
+- default development flow currently uses `MAIL_MODE=mock`
+- switch to `MAIL_MODE=yahoo` only after Yahoo app-password creation becomes available
+- this runs the app container only, not the full final public-edge deployment story
+
+## Public deployment notes
+
+The intended public target is:
 
 ```text
-https://yahoomcp.example.com:8443/health
+yahoomcp.techthatmattrs.net:8443
 ```
 
-You want:
+What is already true:
+- the hostname exists
+- the A record points to the home public IP
+- the router/public-port direction is based on alternate-port exposure, not 80/443
 
-- valid HTTPS
-- no certificate warning
-- healthy JSON response
+What is still pending:
+- the final certificate method that matches WordPress.com DNS
+- the final public edge validation from an external network
+- the final Claude connector registration and testing
 
 ## Claude connector path
 
-Once public HTTPS works:
+Once public HTTPS works cleanly:
 
 1. add the final public connector URL in Claude
 2. start a fresh Claude session
@@ -319,16 +332,17 @@ A few honest truths:
 - the search implementation is intentionally simple right now
 - the IMAP UID handling may need refinement once live Yahoo testing starts
 - the Streamable HTTP route is scaffolded from the stateless pattern, which is good for getting moving but still needs real client validation
-- the public HTTPS path is opinionated toward Cloudflare because it is the cleanest zero-budget DNS automation lane for this project
-- the local and public Compose paths are intentionally separate so local app testing does not depend on public-DNS secrets
-- the Docker image is less bloated than the original starter image, but there is still room to improve once a package lock is committed
+- the local and public Compose paths are intentionally separate so local app testing does not depend on public-edge decisions
+- the public documentation now reflects WordPress.com DNS as the current hostname path, but the public certificate implementation still needs one more cleanup pass
+- the Docker image is leaner than the original starter image, but there is still room to improve once a package lock is committed
 
 ## What I would do next
 
-1. rebuild the Docker image from this branch and compare the scan to the previous image
-2. if the scan improves and the container still boots, merge the Dockerfile changes
-3. then create and commit a package lock from a normal local environment
-4. switch the build to `npm ci`
-5. continue tightening the published image from there
+1. keep using mock mode while Yahoo app-password creation is unavailable
+2. validate the four tools in mock mode end to end
+3. clean up the public HTTPS implementation so it matches the WordPress.com DNS reality
+4. create and commit a package lock from a normal local environment
+5. switch the Docker build to `npm ci`
+6. resume live Yahoo validation once app-password creation is available
 
 That is the shape of the work now. The repo has stopped being an empty shell and started becoming an actual service.
