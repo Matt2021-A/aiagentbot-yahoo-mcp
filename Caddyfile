@@ -1,12 +1,4 @@
-{
-  email {$ACME_EMAIL}
-}
-
-{$HOSTNAME}:{$PUBLIC_HTTPS_PORT} {
-  tls {
-    dns cloudflare {env.CF_API_TOKEN}
-    resolvers 1.1.1.1
-  }
-
-  reverse_proxy yahoomcp-app-public:{$PORT}
+yahoomcp.techthatmattrs.net:8443 {
+    tls /etc/caddy/certs/yahoomcp.techthatmattrs.net.crt /etc/caddy/certs/yahoomcp.techthatmattrs.net.key
+    reverse_proxy yahoomcp-app-public:3000
 }
