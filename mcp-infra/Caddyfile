@@ -1,0 +1,25 @@
+{
+    email {$ACME_EMAIL}
+}
+
+yahoomcp.techthatmattrs.net {
+    reverse_proxy yahoo-mcp:3000
+}
+
+githubmcp.techthatmattrs.net {
+    reverse_proxy github-mcp:3000
+}
+
+# Optional future route if techthatmattrs.net is ever brought home.
+# techthatmattrs.net {
+#     reverse_proxy future-wordpress:8080
+# }
+
+http:// {
+    reverse_proxy legacy-web:80
+}
+
+:443 {
+    tls internal
+    reverse_proxy legacy-web:80
+}
