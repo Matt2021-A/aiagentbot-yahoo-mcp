@@ -9,8 +9,7 @@ const envSchema = z.object({
   YAHOO_APP_PASSWORD: z.string().min(1).optional(),
   PORT: z.coerce.number().default(3000),
   HOSTNAME: z.string().min(1),
-  PUBLIC_HTTPS_PORT: z.coerce.number().default(8443),
-  ACME_EMAIL: z.string().email().optional()
+  PUBLIC_HTTPS_PORT: z.coerce.number().default(443)
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -42,6 +41,5 @@ export const config = {
   yahooAppPassword: parsed.data.YAHOO_APP_PASSWORD ?? '',
   port: parsed.data.PORT,
   hostname: parsed.data.HOSTNAME,
-  publicHttpsPort: parsed.data.PUBLIC_HTTPS_PORT,
-  acmeEmail: parsed.data.ACME_EMAIL
+  publicHttpsPort: parsed.data.PUBLIC_HTTPS_PORT
 };
