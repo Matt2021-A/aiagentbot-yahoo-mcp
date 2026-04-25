@@ -1,0 +1,47 @@
+services:
+  edge:
+    image: caddy:2
+    container_name: mcp-edge
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - yahoo-mcp
+      - github-mcp
+      - legacy-web
+    restart: unless-stopped
+
+  yahoo-mcp:
+    image: iwashuman2021/mcp:yahoo-mcp-latest
+    container_name: yahoo-mcp
+    env_file:
+      - ./env/yahoo.env
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  github-mcp:
+    image: iwashuman2021/mcp:github-mcp-latest
+    container_name: github-mcp
+    env_file:
+      - ./env/github.env
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  legacy-web:
+    image: nginx:alpine
+    container_name: legacy-web
+    volumes:
+      - ./legacy-web:/usr/share/nginx/html:ro
+    expose:
+      - "80"
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
