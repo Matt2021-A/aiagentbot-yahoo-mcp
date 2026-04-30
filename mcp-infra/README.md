@@ -57,7 +57,8 @@ Windows 11 + Docker Desktop
   |             | outbound authenticated   | outbound auth    |
   |             | mail traffic             | API traffic      |
   |             v                          v                  |
-  |   Yahoo IMAP / SMTP services       GitHub REST API       |
+  |   Yahoo Mail services               GitHub REST API       |
+  |   preferred long-term auth: OAuth                           |
   |                                                          |
   |  +----------------------+                                |
   |  | legacy-web container |                                |
@@ -75,6 +76,21 @@ Windows 11 + Docker Desktop
 - The root WordPress site can remain externally hosted while MCP subdomains point home.
 - The legacy IP-only site gets a first-class fallback path.
 - A future self-hosted WordPress container can be added later without changing the core MCP pattern.
+
+## Auth direction by service
+
+### Yahoo MCP
+
+Preferred long-term live-auth direction:
+
+- Yahoo developer access approval
+- OAuth-based mail access for the authenticated mailbox owner
+
+The older consumer app-password path is now treated as fallback or temporary validation behavior, not the mature target architecture.
+
+### GitHub MCP
+
+Preferred live-auth direction remains token-based GitHub API access with backend-only runtime behind the shared edge.
 
 ## What belongs in app repos
 
@@ -116,11 +132,12 @@ Expected DNS model:
 - HTTPS by direct IP will never be as clean as hostname-based TLS because certificate names do not match raw IP access.
 - Claude appears to require standard 443 for connector registration even though the alternate-port MCP endpoint itself was valid.
 - The shared-edge model exists to satisfy that reality.
+- The shared-edge model does not lock every backend to the same auth style. Yahoo can move toward OAuth while GitHub continues token-based API auth.
 
 ## Next implementation steps
 
-1. Refactor Yahoo MCP to backend-only posture.
-2. Refactor GitHub MCP to backend-only posture.
+1. Keep Yahoo MCP backend-only and move its live-auth path toward approved developer-access OAuth.
+2. Keep GitHub MCP backend-only and validate it through the shared 443 edge.
 3. Use the shared compose stack in this directory to run both behind one Caddy edge.
 4. Re-test connector registration on 443 hostnames.
 5. Add future services only by introducing new host routes, not new public ports.
