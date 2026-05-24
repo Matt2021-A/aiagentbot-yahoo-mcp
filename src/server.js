@@ -21,15 +21,33 @@ function buildToolResponse(data) {
 }
 
 function buildErrorResponse(error) {
+  console.error('[mcp] tool failure', error);
+
   return {
     content: [
       {
         type: 'text',
-        text: `Error: ${error.message}`
+        text: 'Error: request failed'
       }
     ],
     isError: true
   };
+}
+
+function requireBearerToken(req, res, next) {
+  if (!config.mcpBearerToken) {
+    res.status(500).json({ error: 'MCP auth is not configured' });
+    return;
+  }
+
+  const actual = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+
+  if (!actual || actual !== config.mcpBearerToken) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  next();
 }
 
 function createServer() {
@@ -63,12 +81,13 @@ function createServer() {
       title: 'Get Message',
       description: 'Retrieve a single message by provider-specific id.',
       inputSchema: {
-        id: z.string().min(1)
+        id: z.string().min(1).max(128),
+        includeRaw: z.boolean().default(false)
       }
     },
-    async ({ id }) => {
+    async ({ id, includeRaw }) => {
       try {
-        const message = await mailProvider.getMessage(id);
+        const message = await mailProvider.getMessage(id, { includeRaw });
         return buildToolResponse({ provider: mailProvider.name, message });
       } catch (error) {
         return buildErrorResponse(error);
@@ -82,9 +101,9 @@ function createServer() {
       title: 'Search Email',
       description: 'Search the configured inbox provider by from, subject, or since date.',
       inputSchema: {
-        from: z.string().optional(),
-        subject: z.string().optional(),
-        since: z.string().optional()
+        from: z.string().max(320).optional(),
+        subject: z.string().max(200).optional(),
+        since: z.string().max(64).optional()
       }
     },
     async ({ from, subject, since }) => {
@@ -103,9 +122,9 @@ function createServer() {
       title: 'Send Email',
       description: 'Send an email from the configured mail provider.',
       inputSchema: {
-        to: z.string().min(1),
-        subject: z.string().min(1),
-        body: z.string().min(1)
+        to: z.string().email().max(320),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(10000)
       }
     },
     async ({ to, subject, body }) => {
@@ -134,15 +153,12 @@ app.get('/health', (_req, res) => {
     service: 'yahoo-mail-mcp',
     version: '0.1.0',
     transport: 'streamable-http',
-    hostname: config.hostname,
-    publicHttpsPort: config.publicHttpsPort,
     mailMode: config.mailMode,
-    provider: mailProvider.name,
-    yahooEmail: config.yahooEmail
+    provider: mailProvider.name
   });
 });
 
-app.post('/mcp', async (req, res) => {
+app.post('/mcp', requireBearerToken, async (req, res) => {
   const server = createServer();
 
   try {
