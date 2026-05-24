@@ -51,7 +51,7 @@ export async function readInbox(limit = 10) {
   }
 }
 
-export async function getMessage(id) {
+export async function getMessage(id, options = {}) {
   const numericId = Number(id);
   if (!Number.isFinite(numericId)) {
     throw new Error('Message id must be a numeric IMAP UID.');
@@ -64,25 +64,35 @@ export async function getMessage(id) {
     const lock = await client.getMailboxLock('INBOX');
 
     try {
-      const message = await client.fetchOne(numericId, {
+      const fetchOptions = {
         uid: true,
         envelope: true,
-        internalDate: true,
-        source: true
-      }, { uid: true });
+        internalDate: true
+      };
+
+      if (options.includeRaw) {
+        fetchOptions.source = true;
+      }
+
+      const message = await client.fetchOne(numericId, fetchOptions, { uid: true });
 
       if (!message) {
         throw new Error(`Message ${id} was not found.`);
       }
 
-      return {
+      const result = {
         id: String(message.uid),
         from: message.envelope?.from?.map(item => item.address).filter(Boolean) ?? [],
         to: message.envelope?.to?.map(item => item.address).filter(Boolean) ?? [],
         subject: message.envelope?.subject ?? '',
-        date: message.internalDate?.toISOString?.() ?? null,
-        raw: message.source ? message.source.toString() : ''
+        date: message.internalDate?.toISOString?.() ?? null
       };
+
+      if (options.includeRaw) {
+        result.raw = message.source ? message.source.toString() : '';
+      }
+
+      return result;
     } finally {
       lock.release();
     }
