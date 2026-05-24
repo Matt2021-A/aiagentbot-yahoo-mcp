@@ -20,7 +20,7 @@ export async function sendEmail(to, subject, body) {
 
   const transporter = createTransport();
   const info = await transporter.sendMail({
-    from: `Claude AI Agent Bot - MattR <${config.yahooEmail}>`,
+    from: `MCP Mail Agent <${config.yahooEmail}>`,
     to,
     subject,
     text: body
