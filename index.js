@@ -6,5 +6,4 @@ app.listen(config.port, '0.0.0.0', () => {
   console.log(`[startup] Public HTTPS port target: ${config.publicHttpsPort}`);
   console.log(`[startup] Mail mode: ${config.mailMode}`);
   console.log(`[startup] Active provider: ${mailProvider.name}`);
-  console.log(`[startup] Yahoo sender identity: ${config.yahooEmail}`);
 });
