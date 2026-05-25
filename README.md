@@ -1,6 +1,6 @@
 # aiagentbot-yahoo-mcp
 
-Provider-neutral Yahoo Mail MCP service scaffold for Claude-first remote connector use.
+Provider-neutral Yahoo Mail MCP service scaffold for remote connector use.
 
 This repo tracks the Yahoo MCP as a backend application that is intended to sit behind a shared HTTPS edge on ports 80 and 443, alongside other MCP services.
 
@@ -37,8 +37,7 @@ The canonical shared-edge design now lives in `mcp-infra/README.md`.
 In plain English:
 
 - clients connect over HTTPS on standard port 443
-- public DNS subdomains point to the home public IP
-- the router forwards 80/443 to the Windows 11 Docker host
+- public DNS subdomains point to the deployment edge
 - one shared Caddy edge routes by hostname
 - Yahoo MCP runs as a backend container on port 3000
 - GitHub MCP and future services follow the same model
@@ -59,6 +58,7 @@ Important:
 - OAuth mail access is not implemented in this repo yet
 - current development still uses `MAIL_MODE=mock`
 - any app-password-based live validation should be treated as transitional if used at all
+- live use should include a private MCP bearer token configured outside the repo
 
 ## Tool surface
 
@@ -85,37 +85,6 @@ Pull it with:
 docker pull iwashuman2021/mcp:yahoo-mcp-latest
 ```
 
-## Repo layout
-
-```text
-.
-├── .dockerignore
-├── .env.example
-├── .gitignore
-├── Dockerfile
-├── README.md
-├── compose.yaml
-├── index.js
-├── mcp-infra/
-│   ├── Caddyfile
-│   ├── README.md
-│   ├── compose.yaml
-│   ├── env/
-│   │   ├── github.env.example
-│   │   └── yahoo.env.example
-│   └── legacy-web/
-│       └── index.html
-├── package.json
-├── package-lock.json
-└── src/
-    ├── config.js
-    ├── imap.js
-    ├── search.js
-    ├── server.js
-    ├── smtp.js
-    └── providers/
-```
-
 ## Local development
 
 ### `.env.example`
@@ -124,11 +93,12 @@ Expected values:
 
 ```env
 MAIL_MODE=mock
-YAHOO_EMAIL=aiagentbot.matt2021@yahoo.com
+YAHOO_EMAIL=bot@example.com
 YAHOO_APP_PASSWORD=set_when_live_mode_is_ready
+MCP_BEARER_TOKEN=replace_with_a_private_local_value
 PORT=3000
 HOST_PORT=3001
-HOSTNAME=yahoomcp.techthatmattrs.net
+HOSTNAME=yahoo-mcp.example.com
 PUBLIC_HTTPS_PORT=443
 ```
 
@@ -173,15 +143,14 @@ That directory contains:
 ## Operational notes
 
 - This repo should be treated as a backend app repo, not as a standalone public TLS edge.
-- The current service still reports its hostname and public HTTPS port for health and host-validation purposes.
+- Health checks intentionally avoid returning mailbox identity, hostname, or public port details.
 - Host validation should continue to trust the configured public hostname routed through the shared edge.
 - The repo is still in a transitional state where the shared-edge platform direction is set, but the Yahoo live-auth implementation has not yet been converted to the preferred OAuth path.
 
 ## What I would do next
 
 1. keep using mock mode while Yahoo developer access is under review
-2. align the GitHub MCP repo to the same backend-only pattern and keep both behind the shared edge
-3. implement the approved Yahoo live-auth path once developer access details are available
-4. validate the Yahoo connector again through the shared 443 hostname
+2. implement the approved Yahoo live-auth path once developer access details are available
+3. validate the Yahoo connector again through the shared 443 hostname with MCP auth enabled
 
 That is the shape of the work now. The Yahoo MCP is no longer the special-case public edge. It is one backend in a shared MCP platform model, and its long-term auth direction is now the Yahoo developer-access OAuth path.
